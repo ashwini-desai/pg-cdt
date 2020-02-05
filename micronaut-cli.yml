@@ -1,0 +1,5 @@
+profile: service
+defaultPackage: pg.cdt
+---
+testFramework: kotlintest
+sourceLanguage: kotlin

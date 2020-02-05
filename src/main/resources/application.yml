@@ -1,0 +1,9 @@
+micronaut:
+  application:
+    name: pg-cdt
+datasources:
+  default:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://localhost/pg_cdt
+    username: postgres
+    password: ${''}
