@@ -1,7 +1,9 @@
-package pg.cdt
+package pg.cdt.person
 
 import io.micronaut.http.annotation.Controller
 import io.micronaut.http.annotation.Get
+import pg.cdt.person.Address
+import pg.cdt.person.Person
 
 @Controller("/persons")
 class PersonController() {

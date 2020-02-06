@@ -12,8 +12,12 @@ version "0.1"
 group "pg.cdt"
 
 repositories {
+    jcenter()
     mavenCentral()
-    maven { url "https://jcenter.bintray.com" }
+    maven {
+        url 'https://jitpack.io'
+        content { includeGroup "com.github.medly.norm" }
+    }
 }
 
 configurations {
@@ -25,16 +29,30 @@ dependencies {
     implementation platform("io.micronaut:micronaut-bom:$micronautVersion")
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}"
     implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}"
+
     implementation "io.micronaut:micronaut-runtime"
     implementation "io.micronaut:micronaut-http-server-netty"
     implementation "io.micronaut:micronaut-http-client"
+    implementation "io.micronaut:micronaut-inject"
+
+    implementation "com.github.medly.norm:runtime:0.0.1"
+    implementation 'io.micronaut.configuration:micronaut-jdbc-hikari'
+    implementation "com.impossibl.pgjdbc-ng:pgjdbc-ng:0.8.3"
+
+    implementation "com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.10.2"
+    implementation "org.liquibase:liquibase-core:3.8.5"
+    implementation "io.micronaut.configuration:micronaut-liquibase"
+
     kapt platform("io.micronaut:micronaut-bom:$micronautVersion")
     kapt "io.micronaut:micronaut-inject-java"
     kapt "io.micronaut:micronaut-validation"
+
     kaptTest platform("io.micronaut:micronaut-bom:$micronautVersion")
     kaptTest "io.micronaut:micronaut-inject-java"
+
     runtimeOnly "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8"
     runtimeOnly "ch.qos.logback:logback-classic:1.2.3"
+
     testImplementation platform("io.micronaut:micronaut-bom:$micronautVersion")
     testImplementation "io.micronaut.test:micronaut-test-kotlintest"
     testImplementation "io.mockk:mockk:1.9.3"

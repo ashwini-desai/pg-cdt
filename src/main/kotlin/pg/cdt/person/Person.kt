@@ -1,4 +1,4 @@
-package pg.cdt
+package pg.cdt.person
 
 data class Person(
         val name: String,

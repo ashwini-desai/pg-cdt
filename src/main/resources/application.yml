@@ -3,7 +3,12 @@ micronaut:
     name: pg-cdt
 datasources:
   default:
-    driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://localhost/pg_cdt
-    username: postgres
-    password: ${''}
+    driverClassName: com.impossibl.postgres.jdbc.PGDriver
+    url: ${DEV_DATABASE_URL:`jdbc:pgsql://localhost/pg_cdt`}
+    username: ${DEV_DATABASE_USERNAME:postgres}
+    password: ${DEV_DATABASE_PASSWORD:''}
+liquibase:
+  datasources:
+    default:
+      change-log: 'classpath:changelog.xml'
+      default-schema: public
