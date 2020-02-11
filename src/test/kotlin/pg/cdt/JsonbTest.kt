@@ -5,7 +5,7 @@ import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestResult
 import io.kotlintest.extensions.TopLevelTest
-import io.kotlintest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotlintest.matchers.collections.shouldContainAll
 import io.kotlintest.specs.DescribeSpec
 import norm.executeCommand
 import norm.executeQuery
@@ -43,15 +43,41 @@ class JsonbTest : DescribeSpec() {
 
             it("without index") {
                 dataSource.connection.use {
-                    it.executeCommand("INSERT INTO contacts values ('julie@xyz.com', 'Julie Dsouza', '{\"Home\":8899776612}');");
-                    it.executeCommand("INSERT INTO contacts values ('lthain9@gov.uk', 'Luise Thain', '{\"Work\":9876543210}');");
+                    val sqlFile = this::class.java.classLoader.getResource("contacts.sql").readText().trim()
+                    it.executeCommand(sqlFile)
                 }
 
                 val result = dataSource.connection.use {
                     it.executeQuery("SELECT phone_numbers from contacts;").toList()
                 }
 
-                result.map { it["phone_numbers"] } shouldContainExactlyInAnyOrder listOf("{\"Home\": 8899776612}", "{\"Work\": 9876543210}")
+                val queryAnalysis = dataSource.connection.use {
+                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts;").toList()
+                }
+
+                println("Plan time = " + queryAnalysis[1])
+                println("Execution time = " + queryAnalysis[2])
+
+                result.map { it["phone_numbers"] } shouldContainAll listOf("{\"Home\": 8899776612}", "{\"Work\": 9876543210}")
+            }
+
+            it("with index") {
+                dataSource.connection.use {
+                    it.executeCommand("CREATE INDEX idx_phone_numbers ON contacts USING gin (phone_numbers);")
+                }
+
+                val result = dataSource.connection.use {
+                    it.executeQuery("SELECT phone_numbers from contacts;").toList()
+                }
+
+                val queryAnalysis = dataSource.connection.use {
+                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts;").toList()
+                }
+
+                println("Plan time = " + queryAnalysis[1])
+                println("Execution time = " + queryAnalysis[2])
+
+                result.map { it["phone_numbers"] } shouldContainAll listOf("{\"Home\": 8899776612}", "{\"Work\": 9876543210}")
             }
         }
     }
