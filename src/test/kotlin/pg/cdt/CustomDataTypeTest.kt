@@ -1,24 +1,22 @@
 package pg.cdt
 
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.impossibl.postgres.jdbc.PGDataSource
-import com.impossibl.postgres.tools.UDTGenerator
 import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestResult
 import io.kotlintest.extensions.TopLevelTest
 import io.kotlintest.shouldBe
-import io.kotlintest.specs.DescribeSpec
-import norm.*
-import java.io.File
+import io.kotlintest.specs.StringSpec
+import norm.executeCommand
+import norm.executeQuery
+import norm.toList
 import java.sql.ResultSet
 import java.sql.SQLData
 import java.sql.SQLInput
 import java.sql.SQLOutput
 
 
-class UserTest : DescribeSpec() {
+class UserTest : StringSpec() {
 
     private val dataSource = PGDataSource().also {
         it.databaseUrl = "jdbc:pgsql://localhost/pg_cdt"
@@ -56,28 +54,46 @@ class UserTest : DescribeSpec() {
     }
 
     init {
-        describe("without index") {
-            it("fetch all records") {
-                dataSource.connection.use {
-                    val sqlFile = this::class.java.classLoader.getResource("users.sql").readText().trim()
-                    it.executeCommand(sqlFile)
-                }
+        "fetch all records" {
+            dataSource.connection.use {
+                val sqlFile = this::class.java.classLoader.getResource("users.sql").readText().trim()
+                it.executeCommand(sqlFile)
+            }
+
+            val result = dataSource.connection.use {
+                it.executeQuery("SELECT * from users;").getColumnAsType(3, Address::class.java)
+            }
+
+            val queryAnalysis = dataSource.connection.use {
+                it.executeQuery("EXPLAIN ANALYZE SELECT * from users;").toList()
+            }
+
+            println("CDT_OBJECT_WITHOUT_INDEX: Plan time = " + queryAnalysis[1])
+            println("CDT_OBJECT_WITHOUT_INDEX: Execution time = " + queryAnalysis[2])
+
+
+            result.size shouldBe 2
+            result[0].blockNumber shouldBe 70897
+            result[1].blockNumber shouldBe 78126
+        }
+
+        "with index" {
+            dataSource.connection.use {
+                it.executeCommand("SET enable_seqscan to FALSE;")
+                it.executeCommand("CREATE UNIQUE INDEX IF NOT EXISTS idx_address ON users (address)")
 
                 val result = dataSource.connection.use {
-                    it.executeQuery("SELECT * from users;").getColumnAsType(3, Address::class.java)
+                    it.executeQuery("SELECT * from users where (address).pin_code = 25130;").toList()
                 }
 
                 val queryAnalysis = dataSource.connection.use {
-                    it.executeQuery("EXPLAIN ANALYZE SELECT * from users;").toList()
+                    it.executeQuery("EXPLAIN ANALYZE SELECT * from users where (address).pin_code = 25130;;").toList()
                 }
 
-                println("CDT_OBJECT_WITHOUT_INDEX: Plan time = " + queryAnalysis[1])
-                println("CDT_OBJECT_WITHOUT_INDEX: Execution time = " + queryAnalysis[2])
+                println("CDT_OBJECT_WITHOUT_INDEX: Plan time = " + queryAnalysis[3])
+                println("CDT_OBJECT_WITHOUT_INDEX: Execution time = " + queryAnalysis[4])
 
-
-                result.size shouldBe 2
-                result[0].blockNumber shouldBe 70897
-                result[1].blockNumber shouldBe 78126
+                result.size shouldBe 1
             }
         }
     }
@@ -94,7 +110,7 @@ data class Address(
     constructor() : this(0, "", "", "", 0)
 
     val blockNumber: Int
-    get() = blockNo
+        get() = blockNo
 
     override fun readSQL(stream: SQLInput?, typeName: String?) {
         blockNo = stream?.readInt()!!
