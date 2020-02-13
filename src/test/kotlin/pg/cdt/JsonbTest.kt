@@ -1,3 +1,5 @@
+@file:Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+
 package pg.cdt
 
 import com.impossibl.postgres.jdbc.PGDataSource
@@ -105,6 +107,23 @@ class JsonbTest : DescribeSpec() {
                 result.map { it["phone_numbers"] }.size shouldBe 20
             }
 
+            it("zero results: -> and ->> cannot be used to query values inside array of json objects. unnesting is the only way") {
+                val result = dataSource.connection.use {
+                    it.executeQuery("SELECT phone_numbers from contacts where phone_numbers->>'tag' = '\"Home\"';").toList()
+                }
+
+                val queryAnalysis = dataSource.connection.use {
+                    it.executeCommand("SET enable_seqscan to FALSE;")
+                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts where phone_numbers->>'tag' = '\"Home\"';").toList()
+                }
+
+                println(">> " + queryAnalysis[0])
+                println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Plan time = " + queryAnalysis[3])
+                println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Execution time = " + queryAnalysis[4])
+
+                result.map { it["phone_numbers"] }.size shouldBe 0
+            }
+
             it("with index: will not use index without where clause") {
                 dataSource.connection.use {
                     it.executeCommand("CREATE INDEX idx_phone_numbers ON contacts USING gin (phone_numbers);")
@@ -141,7 +160,7 @@ class JsonbTest : DescribeSpec() {
                 result.map { it["phone_numbers"] }.size shouldBe 10
             }
 
-            it("with index: selecting sub-object's particular key's value") {
+            it("with index: will not use index because of 'join lateral/unnesting', selecting sub-object's particular key's value") {
                val result = dataSource.connection.use {
                     it.executeQuery("""SELECT obj.val->>'value' as number
                                            FROM   contacts
@@ -159,23 +178,6 @@ class JsonbTest : DescribeSpec() {
                 println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Execution time = " + queryAnalysis[7])
 
                 result.map { it["number"] }.distinct()[0] shouldBe "9876543210"
-            }
-
-            it("!with index: will not use gin index when using -> and ->>") {
-                val result = dataSource.connection.use {
-                    it.executeQuery("SELECT phone_numbers from contacts where phone_numbers->>'tag' = '\"Home\"';").toList()
-                }
-
-                val queryAnalysis = dataSource.connection.use {
-                    it.executeCommand("SET enable_seqscan to FALSE;")
-                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts where phone_numbers->>'tag' = '\"Home\"';").toList()
-                }
-
-                println(">> " + queryAnalysis[0])
-                println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Plan time = " + queryAnalysis[3])
-                println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Execution time = " + queryAnalysis[4])
-
-                result.map { it["phone_numbers"] }.size shouldBe 10
             }
         }
     }
