@@ -64,7 +64,7 @@ class JsonbTest : DescribeSpec() {
 
             it("with index") {
                 dataSource.connection.use {
-                    it.executeCommand("CREATE INDEX idx_phone_numbers ON contacts USING gin (phone_numbers);")
+                    it.executeCommand("CREATE INDEX IF NOT EXISTS idx_phone_numbers ON contacts USING gin (phone_numbers);")
                 }
 
                 val result = dataSource.connection.use {
@@ -105,7 +105,7 @@ class JsonbTest : DescribeSpec() {
                 result.map { it["phone_numbers"] }.size shouldBe 20
             }
 
-            it("with index") {
+            it("with index: will not use index without where clause") {
                 dataSource.connection.use {
                     it.executeCommand("CREATE INDEX idx_phone_numbers ON contacts USING gin (phone_numbers);")
                 }
@@ -124,13 +124,14 @@ class JsonbTest : DescribeSpec() {
                 result.map { it["phone_numbers"] }.size shouldBe 20
             }
 
-            it("while querying based on value of sub-object's key") {
+            it("with index: while querying based on value of sub-object's key") {
                 val result = dataSource.connection.use {
                     it.executeQuery("SELECT phone_numbers from contacts where phone_numbers @> '[{\"tag\":\"Home\"}]';").toList()
                 }
 
                 val queryAnalysis = dataSource.connection.use {
-                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts where phone_numbers @> '[{\"tag\":\"Home\"}]';;").toList()
+                    it.executeCommand("SET enable_seqscan to FALSE;")
+                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts where phone_numbers @> '[{\"tag\":\"Home\"}]';").toList()
                 }
 
                 println(">> " + queryAnalysis[0])
@@ -140,12 +141,8 @@ class JsonbTest : DescribeSpec() {
                 result.map { it["phone_numbers"] }.size shouldBe 10
             }
 
-            it("selecting sub-object's particular key's value") {
-                 dataSource.connection.use {
-                    it.executeCommand("CREATE INDEX idx_phone_numbers_tag ON contacts USING gin ((phone_numbers->'tag')jsonb_path_ops);")
-                }
-
-                val result = dataSource.connection.use {
+            it("with index: selecting sub-object's particular key's value") {
+               val result = dataSource.connection.use {
                     it.executeQuery("""SELECT obj.val->>'value' as number
                                            FROM   contacts
                                            JOIN   LATERAL jsonb_array_elements(contacts.phone_numbers) obj(val) ON obj.val->>'tag' = 'Work'
@@ -153,6 +150,7 @@ class JsonbTest : DescribeSpec() {
                 }
 
                 val queryAnalysis = dataSource.connection.use {
+                    it.executeCommand("SET enable_seqscan to FALSE;")
                     it.executeQuery("EXPLAIN ANALYZE SELECT obj.val->>'value' as number FROM contacts JOIN LATERAL jsonb_array_elements(contacts.phone_numbers) obj(val) ON obj.val->>'tag' = 'Work' WHERE contacts.phone_numbers @> '[{\"tag\":\"Work\"}]';").toList()
                 }
 
@@ -161,6 +159,23 @@ class JsonbTest : DescribeSpec() {
                 println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Execution time = " + queryAnalysis[7])
 
                 result.map { it["number"] }.distinct()[0] shouldBe "9876543210"
+            }
+
+            it("!with index: will not use gin index when using -> and ->>") {
+                val result = dataSource.connection.use {
+                    it.executeQuery("SELECT phone_numbers from contacts where phone_numbers->>'tag' = '\"Home\"';").toList()
+                }
+
+                val queryAnalysis = dataSource.connection.use {
+                    it.executeCommand("SET enable_seqscan to FALSE;")
+                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts where phone_numbers->>'tag' = '\"Home\"';").toList()
+                }
+
+                println(">> " + queryAnalysis[0])
+                println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Plan time = " + queryAnalysis[3])
+                println("JSON_ARRAY_WITH_SUB_OBJECT_KEY_INDEX: Execution time = " + queryAnalysis[4])
+
+                result.map { it["phone_numbers"] }.size shouldBe 10
             }
         }
     }

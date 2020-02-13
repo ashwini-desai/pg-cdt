@@ -29,13 +29,9 @@ dependencies {
     implementation "com.github.medly.norm:runtime:0.0.1"
     implementation "com.impossibl.pgjdbc-ng:pgjdbc-ng:0.8.3"
 
-    kaptTest platform("io.micronaut:micronaut-bom:$micronautVersion")
-    kaptTest "io.micronaut:micronaut-inject-java"
-
     runtimeOnly "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8"
     runtimeOnly "ch.qos.logback:logback-classic:1.2.3"
 
-    testImplementation "io.micronaut.test:micronaut-test-kotlintest:1.1.2"
     testImplementation "io.kotlintest:kotlintest-runner-junit5:3.3.2"
 }
 
@@ -43,10 +39,6 @@ test.classpath += configurations.developmentOnly
 
 test {
     useJUnitPlatform()
-}
-
-allOpen {
-	annotation("io.micronaut.aop.Around")
 }
 
 compileKotlin {
