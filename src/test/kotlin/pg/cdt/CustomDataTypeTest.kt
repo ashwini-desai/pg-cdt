@@ -155,4 +155,4 @@ data class Address(
 }
 
 fun <T : Any> ResultSet.getColumnAsType(columnIndex: Int, type: Class<T>): List<T> =
-        this.use { generateSequence { if (this.next()) this.getObject(3, type) else null }.toList() }
+        this.use { generateSequence { if (this.next()) this.getObject(columnIndex, type) else null }.toList() }
