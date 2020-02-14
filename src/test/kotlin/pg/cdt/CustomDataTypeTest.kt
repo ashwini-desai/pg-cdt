@@ -72,28 +72,50 @@ class UserTest : StringSpec() {
             println("CDT_OBJECT_WITHOUT_INDEX: Execution time = " + queryAnalysis[2])
 
 
-            result.size shouldBe 2
-            result[0].blockNumber shouldBe 70897
-            result[1].blockNumber shouldBe 78126
+            result.size shouldBe 24
+//            result[0].blockNumber shouldBe 70897
+//            result[1].blockNumber shouldBe 78126
         }
 
-        "with index" {
+        "with index: numeric_ops" {
             dataSource.connection.use {
-                it.executeCommand("SET enable_seqscan to FALSE;")
-                it.executeCommand("CREATE UNIQUE INDEX IF NOT EXISTS idx_address ON users (address)")
+                it.executeCommand("CREATE INDEX idx_address_pin_code ON users (((address).pin_code) numeric_ops);")
 
                 val result = dataSource.connection.use {
                     it.executeQuery("SELECT * from users where (address).pin_code = 25130;").toList()
                 }
 
                 val queryAnalysis = dataSource.connection.use {
-                    it.executeQuery("EXPLAIN ANALYZE SELECT * from users where (address).pin_code = 25130;;").toList()
+                    it.executeCommand("SET enable_seqscan to FALSE;")
+                    it.executeQuery("EXPLAIN ANALYZE SELECT * from users where (address).pin_code = 25130;").toList()
                 }
 
-                println("CDT_OBJECT_WITHOUT_INDEX: Plan time = " + queryAnalysis[3])
-                println("CDT_OBJECT_WITHOUT_INDEX: Execution time = " + queryAnalysis[4])
+                println("CDT_OBJECT_WITH_INDEX" + queryAnalysis[0])
+                println("CDT_OBJECT_WITH_INDEX: Plan time = " + queryAnalysis[2])
+                println("CDT_OBJECT_WITH_INDEX: Execution time = " + queryAnalysis[3])
 
                 result.size shouldBe 1
+            }
+        }
+
+        "with index: varchar_pattern_ops" {
+            dataSource.connection.use {
+                it.executeCommand("CREATE INDEX idx_address_street_address ON users (((address).street_address) COLLATE \"en_US.UTF-8\" varchar_pattern_ops);")
+
+                val result = dataSource.connection.use {
+                    it.executeQuery("SELECT * from users where (address).street_address ~~ 'Sauthoff%';").toList()
+                }
+
+                val queryAnalysis = dataSource.connection.use {
+                    it.executeCommand("SET enable_seqscan to FALSE;")
+                    it.executeQuery("EXPLAIN ANALYZE SELECT * from users where (address).street_address ~~ 'Sauthoff%';").toList()
+                }
+
+                println("CDT_OBJECT_WITH_INDEX" + queryAnalysis[0])
+                println("CDT_OBJECT_WITH_INDEX: Plan time = " + queryAnalysis[2])
+                println("CDT_OBJECT_WITH_INDEX: Execution time = " + queryAnalysis[3])
+
+                result.size shouldBe 2
             }
         }
     }
