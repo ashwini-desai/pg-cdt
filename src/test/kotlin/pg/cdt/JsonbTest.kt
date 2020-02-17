@@ -8,6 +8,7 @@ import io.kotlintest.TestCase
 import io.kotlintest.TestResult
 import io.kotlintest.extensions.TopLevelTest
 import io.kotlintest.matchers.collections.shouldContainAll
+import io.kotlintest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotlintest.shouldBe
 import io.kotlintest.specs.DescribeSpec
 import norm.executeCommand
@@ -64,23 +65,25 @@ class JsonbTest : DescribeSpec() {
                 result.map { it["phone_numbers"] } shouldContainAll listOf("{\"Home\": 8899776612}", "{\"Work\": 9876543210}")
             }
 
-            it("with index") {
+            it("with index: ") {
                 dataSource.connection.use {
                     it.executeCommand("CREATE INDEX IF NOT EXISTS idx_phone_numbers ON contacts USING gin (phone_numbers);")
                 }
 
                 val result = dataSource.connection.use {
-                    it.executeQuery("SELECT phone_numbers from contacts;").toList()
+                    it.executeQuery("SELECT phone_numbers from contacts where phone_numbers ?? 'Home';").toList()
                 }
 
                 val queryAnalysis = dataSource.connection.use {
-                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts;").toList()
+                    it.executeCommand("SET enable_seqscan to FALSE;")
+                    it.executeQuery("EXPLAIN ANALYZE SELECT phone_numbers from contacts where phone_numbers ?? 'Home';").toList()
                 }
 
-                println("JSON_OBJECT_WITH_INDEX: Plan time = " + queryAnalysis[1])
-                println("JSON_OBJECT_WITH_INDEX: Execution time = " + queryAnalysis[2])
+                println(">> " + queryAnalysis[0])
+                println("JSON_OBJECT_WITH_INDEX: Plan time = " + queryAnalysis[3])
+                println("JSON_OBJECT_WITH_INDEX: Execution time = " + queryAnalysis[4])
 
-                result.map { it["phone_numbers"] } shouldContainAll listOf("{\"Home\": 8899776612}", "{\"Work\": 9876543210}")
+                result.map { it["phone_numbers"] } shouldContainExactlyInAnyOrder listOf("{\"Home\": 8899776612}", "{\"Home\": 9876543210}")
             }
         }
 
