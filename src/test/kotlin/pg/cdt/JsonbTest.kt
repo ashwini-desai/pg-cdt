@@ -18,7 +18,7 @@ import norm.toList
 
 class JsonbTest : DescribeSpec() {
     private val dataSource = PGDataSource().also {
-        it.databaseUrl = "jdbc:pgsql://localhost/pg_cdt"
+        it.databaseUrl = "jdbc:pgsql://localhost/postgres"
         it.user = "postgres"
     }
 
