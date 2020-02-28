@@ -8,6 +8,9 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 11
+    - uses: Harmon758/postgresql-action@v1.0.0
+    - name: create test database
+      run: CREATE DATABASE pg_cdt
     - uses: eskatos/gradle-command-action@v1
       with:
         arguments: build
