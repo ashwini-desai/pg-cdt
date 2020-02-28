@@ -13,6 +13,10 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 11
+    - name: Connect to postgres
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432 
     - uses: eskatos/gradle-command-action@v1
       with:
         arguments: build
